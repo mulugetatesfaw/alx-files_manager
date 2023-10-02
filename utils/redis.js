@@ -1,63 +1,40 @@
-const redis = require('redis');
+import { MongoClient } from 'mongodb';
 
-class RedisClient {
+const host = process.env.DB_HOST || 'localhost';
+const port = process.env.DB_PORT || 27017;
+const database = process.env.DB_DATABASE || 'files_manager';
+const url = `mongodb://${host}:${port}/`;
+
+class DBClient {
   constructor() {
-    this.client = redis.createClient();
-
-    this.client.on('error', (error) => {
-      console.error('Redis Error:', error);
+    this.db = null;
+    MongoClient.connect(url, { useUnifiedTopology: true }, (error, client) => {
+      if (error) console.log(error);
+      this.db = client.db(database);
+      this.db.createCollection('users');
+      this.db.createCollection('files');
     });
   }
 
-  async isAlive() {
-    return new Promise((resolve) => {
-      this.client.ping('alive', (error, result) => {
-        if (error) {
-          resolve(false);
-        } else {
-          resolve(result === 'alive');
-        }
-      });
-    });
+  isAlive() {
+    return !!this.db;
   }
 
-  async get(key) {
-    return new Promise((resolve, reject) => {
-      this.client.get(key, (error, result) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(result);
-        }
-      });
-    });
+  async nbUsers() {
+    return this.db.collection('users').countDocuments();
   }
 
-  async set(key, value, duration) {
-    return new Promise((resolve, reject) => {
-      this.client.setex(key, duration, value, (error, result) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(result);
-        }
-      });
-    });
+  async getUser(query) {
+    console.log('QUERY IN DB.JS', query);
+    const user = await this.db.collection('users').findOne(query);
+    console.log('GET USER IN DB.JS', user);
+    return user;
   }
 
-  async del(key) {
-    return new Promise((resolve, reject) => {
-      this.client.del(key, (error, result) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(result);
-        }
-      });
-    });
+  async nbFiles() {
+    return this.db.collection('files').countDocuments();
   }
 }
 
-const redisClient = new RedisClient();
-
-module.exports = redisClient;
+const dbClient = new DBClient();
+export default dbClient;
