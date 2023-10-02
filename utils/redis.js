@@ -1,4 +1,3 @@
-/* eslint-disable linebreak-style */
 const redis = require('redis');
 
 class RedisClient {
